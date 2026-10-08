@@ -1,0 +1,33 @@
+# k3d 로컬 클러스터. compose가 쓰는 3000번대 포트와 겹치지 않게 호스트 포트를 13000번대로 연다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: ghcr.io/ljs3536/mes-ai-backend
+    newName: factory-mes/backend
+    newTag: local
+  - name: ghcr.io/ljs3536/mes-ai-frontend
+    newName: factory-mes/frontend
+    newTag: local
+  - name: ghcr.io/ljs3536/mes-ai-machine-emulator
+    newName: factory-mes/machine-emulator
+    newTag: local
+  - name: ghcr.io/ljs3536/mes-ai-edge-gateway
+    newName: factory-mes/edge-gateway
+    newTag: local
+  - name: ghcr.io/ljs3536/mes-ai-sensor-collector
+    newName: factory-mes/sensor-collector
+    newTag: local
+  - name: ghcr.io/ljs3536/mes-ai-sensor-emulator
+    newName: factory-mes/sensor-emulator
+    newTag: local
+  - name: ghcr.io/ljs3536/mes-ai-analytics-backend
+    newName: factory-mes/analytics-backend
+    newTag: local
+  - name: ghcr.io/ljs3536/mes-ai-analytics-frontend
+    newName: factory-mes/analytics-frontend
+    newTag: local
+  - name: ghcr.io/ljs3536/mes-ai-infra/mlflow
+    newName: factory-mes/mlflow
+    newTag: local

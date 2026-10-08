@@ -1,0 +1,234 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mariadb-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: db }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: db }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: mariadb
+          image: mariadb:11.4
+          args: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+          env:
+            - { name: MARIADB_ROOT_PASSWORD, value: root }
+            - { name: MARIADB_DATABASE, value: mes }
+            - { name: MARIADB_USER, value: mes }
+            - { name: MARIADB_PASSWORD, value: mes }
+            - { name: TZ, value: Asia/Seoul }
+          ports:
+            - containerPort: 3306
+          readinessProbe:
+            exec:
+              command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/mysql }
+            - { name: init, mountPath: /docker-entrypoint-initdb.d }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: mariadb-data }
+        - name: init
+          configMap: { name: mariadb-init }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  selector: { app: db }
+  ports:
+    - port: 3306
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mosquitto-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mqtt }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: mqtt }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: mosquitto
+          image: eclipse-mosquitto:2
+          ports:
+            - { containerPort: 1883, name: mqtt }
+            - { containerPort: 9001, name: ws }
+          readinessProbe:
+            exec:
+              command: ["mosquitto_sub", "-t", "$SYS/broker/uptime", "-C", "1", "-W", "3"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - { name: config, mountPath: /mosquitto/config/mosquitto.conf, subPath: mosquitto.conf }
+            - { name: data, mountPath: /mosquitto/data }
+      volumes:
+        - name: config
+          configMap: { name: mosquitto-config }
+        - name: data
+          persistentVolumeClaim: { claimName: mosquitto-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mqtt
+spec:
+  type: LoadBalancer
+  selector: { app: mqtt }
+  ports:
+    - { name: mqtt, port: 1883, targetPort: 1883 }
+    - { name: ws, port: 9001, targetPort: 9001 }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: influx-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: influx-config
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: influxdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: influxdb }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: influxdb }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: influxdb
+          image: influxdb:2.7
+          env:
+            - { name: DOCKER_INFLUXDB_INIT_MODE, value: setup }
+            - { name: DOCKER_INFLUXDB_INIT_USERNAME, value: mes }
+            - { name: DOCKER_INFLUXDB_INIT_PASSWORD, value: mesmesmes }
+            - { name: DOCKER_INFLUXDB_INIT_ORG, value: mes }
+            - { name: DOCKER_INFLUXDB_INIT_BUCKET, value: sensors }
+            - { name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN, value: mes-dev-token }
+            - { name: DOCKER_INFLUXDB_INIT_RETENTION, value: 168h }
+          ports:
+            - containerPort: 8086
+          readinessProbe:
+            exec:
+              command: ["influx", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/influxdb2 }
+            - { name: config, mountPath: /etc/influxdb2 }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: influx-data }
+        - name: config
+          persistentVolumeClaim: { claimName: influx-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb
+spec:
+  type: LoadBalancer
+  selector: { app: influxdb }
+  ports:
+    - port: 8086
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mlflow }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: mlflow }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: mlflow
+          image: ghcr.io/ljs3536/mes-ai-infra/mlflow
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          readinessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - { name: data, mountPath: /mlflow }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: mlflow-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+spec:
+  type: LoadBalancer
+  selector: { app: mlflow }
+  ports:
+    - port: 5000

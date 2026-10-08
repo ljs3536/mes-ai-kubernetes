@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: factory-mes
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ljs3536/mes-ai-kubernetes
+    targetRevision: main
+    path: overlays/k3d
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: factory-mes
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
