@@ -16,10 +16,14 @@ spec:
           image: ghcr.io/ljs3536/mes-ai-backend
           imagePullPolicy: IfNotPresent
           env:
-            - { name: DATABASE_URL, value: "mysql+pymysql://mes:mes@db:3306/mes?charset=utf8mb4" }
-            - { name: CORS_ORIGINS, value: "[\"http://localhost:3000\",\"http://localhost:13000\"]" }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: mes-data, key: database-url } }
+            - { name: CORS_ORIGINS, value: "[\"https://localhost:13000\",\"https://localhost:8443\"]" }
             - { name: SEED_DEMO, value: "true" }
             - { name: MQTT_HOST, value: mqtt }
+            - { name: MQTT_USERNAME, value: backend }
+            - name: MQTT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-mqtt, key: backend-password } }
           ports:
             - containerPort: 8000
           readinessProbe:
@@ -32,7 +36,6 @@ kind: Service
 metadata:
   name: backend
 spec:
-  type: LoadBalancer
   selector: { app: backend }
   ports:
     - port: 8000
@@ -64,7 +67,6 @@ kind: Service
 metadata:
   name: frontend
 spec:
-  type: LoadBalancer
   selector: { app: frontend }
   ports:
     - port: 3000
@@ -90,6 +92,9 @@ spec:
             - { name: MACHINE_CODE, value: MACHINE_A }
             - { name: MODBUS_PORT, value: "5020" }
             - { name: MQTT_HOST, value: mqtt }
+            - { name: MQTT_USERNAME, value: machine }
+            - name: MQTT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-mqtt, key: machine-password } }
             - { name: CYCLE_SECONDS, value: "0.6" }
             - { name: RATED_RPM, value: "3000" }
             - { name: FAULT_MODE, value: none }
@@ -101,7 +106,6 @@ kind: Service
 metadata:
   name: emulator-a
 spec:
-  type: LoadBalancer
   selector: { app: emulator-a }
   ports:
     - port: 5020
@@ -127,6 +131,9 @@ spec:
             - { name: MACHINE_CODE, value: MACHINE_B }
             - { name: MODBUS_PORT, value: "5020" }
             - { name: MQTT_HOST, value: mqtt }
+            - { name: MQTT_USERNAME, value: machine }
+            - name: MQTT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-mqtt, key: machine-password } }
             - { name: CYCLE_SECONDS, value: "0.9" }
             - { name: RATED_RPM, value: "2400" }
             - { name: FAULT_MODE, value: bearing_overheat }
@@ -139,7 +146,6 @@ kind: Service
 metadata:
   name: emulator-b
 spec:
-  type: LoadBalancer
   selector: { app: emulator-b }
   ports:
     - { port: 5021, targetPort: 5020 }
@@ -165,6 +171,9 @@ spec:
             - { name: GATEWAY_ID, value: edge-gw-01 }
             - { name: MACHINES, value: "MACHINE_A=emulator-a:5020,MACHINE_B=emulator-b:5020" }
             - { name: MQTT_HOST, value: mqtt }
+            - { name: MQTT_USERNAME, value: gateway }
+            - name: MQTT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-mqtt, key: gateway-password } }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -185,11 +194,15 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - { name: MQTT_HOST, value: mqtt }
+            - { name: MQTT_USERNAME, value: collector }
+            - name: MQTT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-mqtt, key: collector-password } }
             - { name: INFLUX_URL, value: "http://influxdb:8086" }
-            - { name: INFLUX_TOKEN, value: mes-dev-token }
+            - name: INFLUX_TOKEN
+              valueFrom: { secretKeyRef: { name: mes-data, key: influx-token } }
             - { name: INFLUX_ORG, value: mes }
             - { name: INFLUX_BUCKET, value: sensors }
-            - { name: CORS_ORIGINS, value: "[\"http://localhost:3001\",\"http://localhost:13001\"]" }
+            - { name: CORS_ORIGINS, value: "[\"https://localhost:13001\"]" }
           ports:
             - containerPort: 8001
 ---
@@ -198,7 +211,6 @@ kind: Service
 metadata:
   name: sensor-collector
 spec:
-  type: LoadBalancer
   selector: { app: sensor-collector }
   ports:
     - port: 8001
@@ -233,9 +245,12 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - { name: MQTT_HOST, value: mqtt }
+            - { name: MQTT_USERNAME, value: waveform }
+            - name: MQTT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-mqtt, key: waveform-password } }
             - { name: MES_URL, value: "http://backend:8000" }
             - { name: DATABASE_PATH, value: /data/emulator.db }
-            - { name: CORS_ORIGINS, value: "[\"http://localhost:3001\",\"http://localhost:13001\"]" }
+            - { name: CORS_ORIGINS, value: "[\"https://localhost:13001\"]" }
           ports:
             - containerPort: 8002
           volumeMounts:
@@ -249,7 +264,6 @@ kind: Service
 metadata:
   name: sensor-emulator
 spec:
-  type: LoadBalancer
   selector: { app: sensor-emulator }
   ports:
     - port: 8002
@@ -284,11 +298,14 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - { name: MQTT_HOST, value: mqtt }
+            - { name: MQTT_USERNAME, value: analytics }
+            - name: MQTT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-mqtt, key: analytics-password } }
             - { name: COLLECTOR_URL, value: "http://sensor-collector:8001" }
             - { name: MES_URL, value: "http://backend:8000" }
             - { name: MLFLOW_TRACKING_URI, value: "http://mlflow:5000" }
             - { name: MODEL_DIR, value: /data }
-            - { name: CORS_ORIGINS, value: "[\"http://localhost:3001\",\"http://localhost:13001\"]" }
+            - { name: CORS_ORIGINS, value: "[\"https://localhost:13001\"]" }
           ports:
             - containerPort: 8003
           volumeMounts:
@@ -302,7 +319,6 @@ kind: Service
 metadata:
   name: analytics-backend
 spec:
-  type: LoadBalancer
   selector: { app: analytics-backend }
   ports:
     - port: 8003
@@ -337,7 +353,6 @@ kind: Service
 metadata:
   name: analytics-frontend
 spec:
-  type: LoadBalancer
   selector: { app: analytics-frontend }
   ports:
     - port: 3001

@@ -1,0 +1,32 @@
+user backend
+topic readwrite mes/machines/#
+topic read mes/gateways/#
+
+user collector
+topic read mes/machines/+/sensors
+topic read mes/machines/+/waveform
+topic read mes/machines/+/anomaly
+topic read mes/sim/+/labels
+topic write mes/machines/+/features
+
+user gateway
+topic read mes/machines/+/job
+topic write mes/machines/+/state
+topic write mes/machines/+/events
+topic write mes/gateways/#
+
+user machine
+topic write mes/machines/+/sensors
+
+user waveform
+topic read mes/machines/+/state
+topic write mes/machines/+/waveform
+topic write mes/sim/#
+
+user analytics
+topic read mes/machines/+/features
+topic read mes/machines/+/waveform
+topic write mes/machines/+/anomaly
+
+user probe
+topic read $SYS/#

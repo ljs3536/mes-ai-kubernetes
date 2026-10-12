@@ -1,0 +1,45 @@
+# 클러스터 밖으로 나가는 입구. 인증서는 Secret mes-tls 를 쓴다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: nginx }
+  template:
+    metadata:
+      labels: { app: nginx }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - { name: mes, containerPort: 3000 }
+            - { name: analytics, containerPort: 3001 }
+            - { name: https, containerPort: 443 }
+          readinessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          volumeMounts:
+            - { name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf }
+            - { name: tls, mountPath: /etc/nginx/tls, readOnly: true }
+      volumes:
+        - name: config
+          configMap: { name: nginx-config }
+        - name: tls
+          secret: { secretName: mes-tls }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+spec:
+  type: LoadBalancer
+  selector: { app: nginx }
+  ports:
+    - { name: mes, port: 3000, targetPort: 3000 }
+    - { name: analytics, port: 3001, targetPort: 3001 }
+    - { name: https, port: 443, targetPort: 443 }

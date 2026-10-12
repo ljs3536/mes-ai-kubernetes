@@ -1,0 +1,206 @@
+# 들어오는 연결은 필요한 파드만 허용한다.
+# 이 클러스터의 정책 엔진은 응답 패킷도 ingress로 보므로, 서로 통신하는 양쪽을 모두 연다.
+# 포트는 고정하지 않는다. 응답은 임시 포트로 돌아온다.
+# 프로브는 k3d 노드 대역에서 온다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-node-probes
+spec:
+  podSelector: {}
+  ingress:
+    - from:
+        - ipBlock: { cidr: 192.168.147.0/24 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nginx-public
+spec:
+  podSelector:
+    matchLabels: { app: nginx }
+  ingress:
+    - {}
+    - from:
+        - podSelector: { matchLabels: { app: frontend } }
+        - podSelector: { matchLabels: { app: analytics-frontend } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend
+spec:
+  podSelector:
+    matchLabels: { app: frontend }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: nginx } }
+        - podSelector: { matchLabels: { app: backend } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: analytics-frontend
+spec:
+  podSelector:
+    matchLabels: { app: analytics-frontend }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: nginx } }
+        - podSelector: { matchLabels: { app: backend } }
+        - podSelector: { matchLabels: { app: sensor-collector } }
+        - podSelector: { matchLabels: { app: sensor-emulator } }
+        - podSelector: { matchLabels: { app: analytics-backend } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend
+spec:
+  podSelector:
+    matchLabels: { app: backend }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: frontend } }
+        - podSelector: { matchLabels: { app: analytics-frontend } }
+        - podSelector: { matchLabels: { app: analytics-backend } }
+        - podSelector: { matchLabels: { app: sensor-emulator } }
+        - podSelector: { matchLabels: { app: db } }
+        - podSelector: { matchLabels: { app: mqtt } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db
+spec:
+  podSelector:
+    matchLabels: { app: db }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: backend } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mqtt
+spec:
+  podSelector:
+    matchLabels: { app: mqtt }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: backend } }
+        - podSelector: { matchLabels: { app: sensor-collector } }
+        - podSelector: { matchLabels: { app: edge-gateway } }
+        - podSelector: { matchLabels: { app: emulator-a } }
+        - podSelector: { matchLabels: { app: emulator-b } }
+        - podSelector: { matchLabels: { app: sensor-emulator } }
+        - podSelector: { matchLabels: { app: analytics-backend } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: influxdb
+spec:
+  podSelector:
+    matchLabels: { app: influxdb }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: sensor-collector } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mlflow
+spec:
+  podSelector:
+    matchLabels: { app: mlflow }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: analytics-backend } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sensor-collector
+spec:
+  podSelector:
+    matchLabels: { app: sensor-collector }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: analytics-frontend } }
+        - podSelector: { matchLabels: { app: analytics-backend } }
+        - podSelector: { matchLabels: { app: mqtt } }
+        - podSelector: { matchLabels: { app: influxdb } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sensor-emulator
+spec:
+  podSelector:
+    matchLabels: { app: sensor-emulator }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: analytics-frontend } }
+        - podSelector: { matchLabels: { app: backend } }
+        - podSelector: { matchLabels: { app: mqtt } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: analytics-backend
+spec:
+  podSelector:
+    matchLabels: { app: analytics-backend }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: analytics-frontend } }
+        - podSelector: { matchLabels: { app: mqtt } }
+        - podSelector: { matchLabels: { app: sensor-collector } }
+        - podSelector: { matchLabels: { app: backend } }
+        - podSelector: { matchLabels: { app: mlflow } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: emulator-a
+spec:
+  podSelector:
+    matchLabels: { app: emulator-a }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: edge-gateway } }
+        - podSelector: { matchLabels: { app: mqtt } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: emulator-b
+spec:
+  podSelector:
+    matchLabels: { app: emulator-b }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: edge-gateway } }
+        - podSelector: { matchLabels: { app: mqtt } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: edge-gateway
+spec:
+  podSelector:
+    matchLabels: { app: edge-gateway }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: mqtt } }
+        - podSelector: { matchLabels: { app: emulator-a } }
+        - podSelector: { matchLabels: { app: emulator-b } }

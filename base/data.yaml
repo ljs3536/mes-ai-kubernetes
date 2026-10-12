@@ -27,10 +27,12 @@ spec:
           image: mariadb:11.4
           args: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
           env:
-            - { name: MARIADB_ROOT_PASSWORD, value: root }
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-data, key: mariadb-root-password } }
             - { name: MARIADB_DATABASE, value: mes }
             - { name: MARIADB_USER, value: mes }
-            - { name: MARIADB_PASSWORD, value: mes }
+            - name: MARIADB_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-data, key: mariadb-password } }
             - { name: TZ, value: Asia/Seoul }
           ports:
             - containerPort: 3306
@@ -81,23 +83,50 @@ spec:
       labels: { app: mqtt }
     spec:
       enableServiceLinks: false
+      initContainers:
+        - name: auth-files
+          image: eclipse-mosquitto:2
+          command: ["sh", "-c"]
+          args:
+            - |
+              cp /secret/passwd /auth/passwd
+              cp /config/acl /auth/acl
+              chown 1883:1883 /auth/passwd /auth/acl
+              chmod 0600 /auth/passwd
+              chmod 0640 /auth/acl
+          volumeMounts:
+            - { name: mqtt-secret, mountPath: /secret }
+            - { name: config, mountPath: /config }
+            - { name: auth, mountPath: /auth }
       containers:
         - name: mosquitto
           image: eclipse-mosquitto:2
+          env:
+            - { name: MQTT_USERNAME, value: probe }
+            - name: MQTT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-mqtt, key: probe-password } }
           ports:
             - { containerPort: 1883, name: mqtt }
             - { containerPort: 9001, name: ws }
           readinessProbe:
             exec:
-              command: ["mosquitto_sub", "-t", "$SYS/broker/uptime", "-C", "1", "-W", "3"]
+              command:
+                - sh
+                - -c
+                - mosquitto_sub -h 127.0.0.1 -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -t '$SYS/broker/uptime' -C 1 -W 3
             initialDelaySeconds: 5
             periodSeconds: 5
           volumeMounts:
             - { name: config, mountPath: /mosquitto/config/mosquitto.conf, subPath: mosquitto.conf }
+            - { name: auth, mountPath: /mosquitto/auth }
             - { name: data, mountPath: /mosquitto/data }
       volumes:
         - name: config
           configMap: { name: mosquitto-config }
+        - name: mqtt-secret
+          secret: { secretName: mes-mqtt }
+        - name: auth
+          emptyDir: {}
         - name: data
           persistentVolumeClaim: { claimName: mosquitto-data }
 ---
@@ -106,7 +135,6 @@ kind: Service
 metadata:
   name: mqtt
 spec:
-  type: LoadBalancer
   selector: { app: mqtt }
   ports:
     - { name: mqtt, port: 1883, targetPort: 1883 }
@@ -152,10 +180,12 @@ spec:
           env:
             - { name: DOCKER_INFLUXDB_INIT_MODE, value: setup }
             - { name: DOCKER_INFLUXDB_INIT_USERNAME, value: mes }
-            - { name: DOCKER_INFLUXDB_INIT_PASSWORD, value: mesmesmes }
+            - name: DOCKER_INFLUXDB_INIT_PASSWORD
+              valueFrom: { secretKeyRef: { name: mes-data, key: influx-password } }
             - { name: DOCKER_INFLUXDB_INIT_ORG, value: mes }
             - { name: DOCKER_INFLUXDB_INIT_BUCKET, value: sensors }
-            - { name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN, value: mes-dev-token }
+            - name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+              valueFrom: { secretKeyRef: { name: mes-data, key: influx-token } }
             - { name: DOCKER_INFLUXDB_INIT_RETENTION, value: 168h }
           ports:
             - containerPort: 8086
@@ -178,7 +208,6 @@ kind: Service
 metadata:
   name: influxdb
 spec:
-  type: LoadBalancer
   selector: { app: influxdb }
   ports:
     - port: 8086
@@ -228,7 +257,6 @@ kind: Service
 metadata:
   name: mlflow
 spec:
-  type: LoadBalancer
   selector: { app: mlflow }
   ports:
     - port: 5000
