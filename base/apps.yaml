@@ -345,6 +345,7 @@ spec:
             - { name: EMULATOR_URL, value: "http://sensor-emulator:8002" }
             - { name: ANALYTICS_URL, value: "http://analytics-backend:8003" }
             - { name: MES_URL, value: "http://backend:8000" }
+            - { name: MES_PUBLIC_URL, value: "https://localhost:13000" }
           ports:
             - containerPort: 3001
 ---

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS operators (
   employee_no varchar(32) NOT NULL,
   name varchar(64) NOT NULL,
   role varchar(16) NOT NULL,
+  password_hash varchar(255) DEFAULT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY employee_no (employee_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
