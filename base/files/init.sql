@@ -83,6 +83,31 @@ CREATE TABLE IF NOT EXISTS inspections (
   CONSTRAINT inspections_ibfk_1 FOREIGN KEY (lot_id) REFERENCES lots (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS inspection_specs (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  material_name varchar(128) NOT NULL,
+  name varchar(64) NOT NULL,
+  unit varchar(16) NOT NULL,
+  lower_limit double NOT NULL,
+  upper_limit double NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_inspection_spec (material_name, name),
+  KEY ix_inspection_specs_material_name (material_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS inspection_readings (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  inspection_id int(11) NOT NULL,
+  spec_id int(11) NOT NULL,
+  value double NOT NULL,
+  within_spec tinyint(1) NOT NULL,
+  PRIMARY KEY (id),
+  KEY inspection_id (inspection_id),
+  KEY spec_id (spec_id),
+  CONSTRAINT inspection_readings_ibfk_1 FOREIGN KEY (inspection_id) REFERENCES inspections (id),
+  CONSTRAINT inspection_readings_ibfk_2 FOREIGN KEY (spec_id) REFERENCES inspection_specs (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS shipments (
   id int(11) NOT NULL AUTO_INCREMENT,
   ship_no varchar(32) NOT NULL,
