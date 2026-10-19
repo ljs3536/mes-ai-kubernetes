@@ -73,6 +73,9 @@ CREATE TABLE IF NOT EXISTS inspections (
   id int(11) NOT NULL AUTO_INCREMENT,
   lot_id int(11) NOT NULL,
   result varchar(16) NOT NULL,
+  good_qty int(11) DEFAULT NULL,
+  defect_qty int(11) DEFAULT NULL,
+  disposition varchar(16) DEFAULT NULL,
   note varchar(255) DEFAULT NULL,
   created_at datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (id),
@@ -150,3 +153,6 @@ CREATE TABLE IF NOT EXISTS machine_sensors (
   KEY machine_id (machine_id),
   CONSTRAINT machine_sensors_ibfk_1 FOREIGN KEY (machine_id) REFERENCES machines (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE operators ADD COLUMN machine_id int(11) DEFAULT NULL;
+ALTER TABLE operators ADD UNIQUE KEY uq_operator_machine (machine_id);
