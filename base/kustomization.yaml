@@ -1,6 +1,6 @@
 # 공장 MES를 k3d와 이후 서버 클러스터에 올리는 매니페스트.
 # base는 GHCR 이미지. overlays/k3d는 이 PC의 factory-mes/*:local 이미지를 쓴다.
-# Nginx가 화면만 HTTPS로 연다. DB, Influx, MQTT 비밀번호는 git 밖의 Secret이다.
+# Nginx가 화면만 HTTPS로 연다. DB, Influx, MQTT 비밀번호와 로그인 서명, 내부 호출 토큰은 git 밖의 Secret이다.
 # Argo CD Application은 argocd/application.yaml 이고, 이 kustomization에는 넣지 않는다.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

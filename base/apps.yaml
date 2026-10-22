@@ -24,6 +24,10 @@ spec:
             - { name: MQTT_USERNAME, value: backend }
             - name: MQTT_PASSWORD
               valueFrom: { secretKeyRef: { name: mes-mqtt, key: backend-password } }
+            - name: AUTH_SECRET
+              valueFrom: { secretKeyRef: { name: mes-data, key: auth-secret } }
+            - name: INTERNAL_TOKEN
+              valueFrom: { secretKeyRef: { name: mes-data, key: internal-token } }
           ports:
             - containerPort: 8000
           readinessProbe:
@@ -249,6 +253,8 @@ spec:
             - name: MQTT_PASSWORD
               valueFrom: { secretKeyRef: { name: mes-mqtt, key: waveform-password } }
             - { name: MES_URL, value: "http://backend:8000" }
+            - name: MES_INTERNAL_TOKEN
+              valueFrom: { secretKeyRef: { name: mes-data, key: internal-token } }
             - { name: DATABASE_PATH, value: /data/emulator.db }
             - { name: CORS_ORIGINS, value: "[\"https://localhost:13001\"]" }
           ports:
@@ -303,6 +309,8 @@ spec:
               valueFrom: { secretKeyRef: { name: mes-mqtt, key: analytics-password } }
             - { name: COLLECTOR_URL, value: "http://sensor-collector:8001" }
             - { name: MES_URL, value: "http://backend:8000" }
+            - name: MES_INTERNAL_TOKEN
+              valueFrom: { secretKeyRef: { name: mes-data, key: internal-token } }
             - { name: MLFLOW_TRACKING_URI, value: "http://mlflow:5000" }
             - { name: MODEL_DIR, value: /data }
             - { name: CORS_ORIGINS, value: "[\"https://localhost:13001\"]" }

@@ -7,6 +7,15 @@ GEN=generated
 NS=factory-mes
 mkdir -p "$GEN"
 
+ensure_key() {
+  file=$1
+  key=$2
+  if ! grep -q "^${key}=" "$file"; then
+    umask 077
+    printf '%s=%s\n' "$key" "$(openssl rand -base64 32 | tr -d '\n')" >> "$file"
+  fi
+}
+
 if [ ! -f "$GEN/data.env" ]; then
   root=$(kubectl exec -n "$NS" deploy/db -- printenv MARIADB_ROOT_PASSWORD)
   db=$(kubectl exec -n "$NS" deploy/db -- printenv MARIADB_PASSWORD)
@@ -21,6 +30,8 @@ INFLUX_TOKEN=$token
 DATABASE_URL=mysql+pymysql://mes:${db}@db:3306/mes?charset=utf8mb4
 EOF
 fi
+ensure_key "$GEN/data.env" AUTH_SECRET
+ensure_key "$GEN/data.env" INTERNAL_TOKEN
 
 if [ ! -f "$GEN/mqtt.env" ]; then
   umask 077
@@ -64,6 +75,8 @@ kubectl create secret generic mes-data -n "$NS" \
   --from-literal=influx-password="$INFLUX_PASSWORD" \
   --from-literal=influx-token="$INFLUX_TOKEN" \
   --from-literal=database-url="$DATABASE_URL" \
+  --from-literal=auth-secret="$AUTH_SECRET" \
+  --from-literal=internal-token="$INTERNAL_TOKEN" \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl create secret generic mes-mqtt -n "$NS" \
   --from-file=passwd="$GEN/passwd" \
