@@ -9,6 +9,7 @@
 - `argocd/application.yaml`: Argo CD가 `overlays/k3d`를 이 저장소 `main`에서 동기화한다. Secret은 이 저장소에 없으므로, 매니페스트를 올리기 전에 `create-secrets.sh`를 한 번 실행한다.
 - `policy/kube-network-policies.yaml`: k3s 기본 Flannel은 NetworkPolicy를 강제하지 않는다. 이 DaemonSet이 규칙을 적용한다.
 - `headlamp/headlamp.yaml`: 파드와 로그를 보는 Headlamp다. `factory-mes` Application 밖에 두고 따로 적용한다.
+- `process-and-roadmap.md`: 지금 코드의 입고·가공·품질·출하와 진동 판정, 시스템 역할, 아직 없는 다음 단계.
 
 ## 클러스터
 
